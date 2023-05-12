@@ -4,7 +4,7 @@ namespace Penguin\Component\Container;
 
 use Attribute;
 
-#[Attribute(Attribute::TARGET_METHOD)]
+#[Attribute(Attribute::TARGET_PARAMETER)]
 class Autowire
 {
     public function __construct(protected string $serviceId) {}

@@ -2,6 +2,8 @@
 
 namespace Penguin\Component\Container;
 
+use Penguin\Component\Container\Exception\MethodNotFoundException;
+use Penguin\Component\Container\Exception\ServiceNotFoundException;
 use ReflectionMethod;
 
 /**
@@ -9,7 +11,7 @@ use ReflectionMethod;
  * 
  * @author Nguyễn Hoàng Thắng Thuận <thuanvp012van@gmail.com>
  */
-class Container
+class Container implements ContainerInterface
 {
     private static $instance = null;
 
@@ -90,6 +92,24 @@ class Container
             || isset($this->aliasDefinitions[$id]);
     }
 
+    public function call(string $method, string $id): mixed
+    {
+        if ($this->has($id)) {
+            $definition = $this->definitions[$id];
+            $methodCall = $definition->getMethodCall($method);
+            if ($methodCall !== null) {
+                $service = $this->get($id);
+                $arguments = $methodCall[$method];
+                return $service->$method(...$this->extractArguments($service, $method, $arguments));
+            }
+            throw new MethodNotFoundException("Method {$definition->getClass()}::{$method}() does not exist");
+        }
+        throw new ServiceNotFoundException("Service $id does not exist");
+    }
+
+    /**
+     * Set alias call service.
+     */
     public function setAlias(string $id, string $alias): static
     {
         $this->aliasDefinitions[$alias] = $id;
@@ -107,8 +127,8 @@ class Container
         }
 
         if (isset($this->aliasDefinitions[$id])) {
-            $alias = $this->aliasDefinitions[$id];
-            $definition = $this->definitions[$alias];
+            $id = $this->aliasDefinitions[$id];
+            $definition = $this->definitions[$id];
         }
 
         if ($definition === null) {
@@ -116,28 +136,7 @@ class Container
         }
 
         $class = $definition->getClass();
-
-        $arguments = [];
-        foreach ($definition->getArguments() as $argument) {
-            if ($argument instanceof Reference) {
-                $argument = $this->get((string) $argument);
-            }
-            
-            if (!$argument instanceof Tag) {
-                $arguments[] = $argument;
-            } else {
-                $services = $this->getServicesByTag($argument);
-
-                $params = (new ReflectionMethod($class, '__construct'))->getParameters();
-                foreach ($params as $position => $param) {
-                    $argument = $services[$param->getType()->getName()][0];
-                    if (isset($argument)) {
-                        $arguments[$position] = $argument;
-                    }
-                }
-            }
-        }
-
+        $arguments = $this->extractArguments($class, '__construct', $definition->getArguments());
         $service = new $class(...$arguments);
 
         if ($definition->isSingleton()) {
@@ -147,7 +146,7 @@ class Container
         return $service;
     }
 
-    public function getServicesByTag(Tag $tag): array|object
+    protected function getServicesByTag(Tag $tag): array|object
     {
         $tag = (string) $tag;
         $services = [];
@@ -159,6 +158,32 @@ class Container
             }
         }
         return $services;
+    }
+
+    protected function extractArguments(object|string $objectOrMethod, string $method, array $arguments): array
+    {
+        $results = [];
+        foreach ($arguments as $argument) {
+            if ($argument instanceof Reference) {
+                $argument = $this->get((string) $argument);
+            }
+            
+            if (!$argument instanceof Tag) {
+                $results[] = $argument;
+            } else {
+                $services = $this->getServicesByTag($argument);
+
+                $params = (new ReflectionMethod($objectOrMethod, $method))->getParameters();
+                foreach ($params as $position => $param) {
+                    $argument = $services[$param->getType()->getName()][0];
+                    if (isset($argument)) {
+                        $results[$position] = $argument;
+                    }
+                }
+            }
+        }
+
+        return $results;
     }
 
     protected function addService(string $id, object $service): static

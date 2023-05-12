@@ -17,6 +17,7 @@ class PhpFileLoader extends BaseLoader
         'alias' => 'addAlias',
         'singleton' => 'singleton',
         'tags' => 'addTags',
+        'calls' => 'setCallMethods'
     ];
 
     public function load(mixed $resource): void
@@ -53,7 +54,7 @@ class PhpFileLoader extends BaseLoader
 
     protected function singleton(Definition $definition, bool $singleton): void
     {
-        $definition->singleton($singleton);
+        $definition->setSingleton($singleton);
     }
 
     protected function addAlias(Definition $definition, string|array $aliases): void
@@ -61,6 +62,13 @@ class PhpFileLoader extends BaseLoader
         $aliases = is_string($aliases) ? [$aliases] : $aliases;
         foreach ($aliases as $alias) {
             $this->container->setAlias($definition->getId(), $alias);
+        }
+    }
+
+    protected function setCallMethods(Definition $definition, array $methods): void
+    {
+        foreach ($methods as $method => $arguments) {
+            $definition->addMethodCall($method, $arguments);
         }
     }
 }

@@ -15,9 +15,9 @@ class Definition
 
     protected array $arguments = [];
 
-    protected ?string $abstract;
+    protected array $calls = [];
 
-    protected bool $autowire = false;
+    protected ?string $abstract;
 
     public function __construct(protected string $id, protected string $class) {}
 
@@ -64,7 +64,34 @@ class Definition
         return $this->arguments;
     }
 
-    public function singleton(bool $singleton = true): static
+    public function addMethodCall(string $method, array $arguments = []): static
+    {
+        $this->calls[$method] = $arguments;
+        return $this;
+    }
+
+    public function getMethodCall(string $method): array|null
+    {
+        return $this->hasMethodCall($method) ? [$method => $this->calls[$method]] : null;
+    }
+
+    public function removeMethodCall(string $method): static
+    {
+        unset($this->calls[$method]);
+        return $this;
+    }
+
+    public function hasMethodCall(string $method): bool
+    {
+        return array_key_exists($method, $this->calls);
+    }
+
+    public function getMethodCalls(): array
+    {
+        return $this->calls;
+    }
+
+    public function setSingleton(bool $singleton = true): static
     {
         $this->singleton = $singleton;
         return $this;
@@ -73,17 +100,6 @@ class Definition
     public function isSingleton(): bool
     {
         return $this->singleton;
-    }
-
-    public function autowire(bool $autowire = true): static
-    {
-        $this->autowire = $autowire;
-        return $this;
-    }
-
-    public function isAutowirte(): bool
-    {
-        return $this->autowire;
     }
 
     public function setTags(string|array $tags): static
@@ -105,8 +121,21 @@ class Definition
         return $this;
     }
 
+    public function clearTags(): static
+    {
+        $this->tags = [];
+        return $this;
+    }
+
     public function getTags(): array
     {
         return $this->tags;
+    }
+
+    public function autowire(): static
+    {
+        $scanner = new Scanner($this->getClass());
+        $this->arguments = $scanner->getArguments();
+        return $this;
     }
 }
