@@ -36,6 +36,13 @@ interface ContainerInterface
      */
     public function has(string $id): bool;
 
+    /**
+     * Call method in service.
+     * 
+     * @param string $method
+     * @param int $id
+     * @return mixed
+     */
     public function call(string $method, string $id): mixed;
 
     /**

@@ -3,6 +3,7 @@
 namespace Penguin\Component\Container\Loader;
 
 use Penguin\Component\Container\Definition;
+use ReflectionClass;
 
 /**
  * PhpFileLoader loads service definitions from an array PHP file.
@@ -12,12 +13,12 @@ use Penguin\Component\Container\Definition;
 class PhpFileLoader extends BaseLoader
 {
     protected const SERVICE_KEYWORDS = [
-        'abstract' => 'setAbstract',
         'arguments' => 'addArguments',
         'alias' => 'addAlias',
         'singleton' => 'singleton',
         'tags' => 'addTags',
-        'calls' => 'setCallMethods'
+        'calls' => 'setCallMethods',
+        'autowire' => 'autowire'
     ];
 
     public function load(mixed $resource): void
@@ -25,16 +26,22 @@ class PhpFileLoader extends BaseLoader
         $services = require $resource;
         foreach ($services as $id => $keywords) {
             $definition = $this->container->register($id, $keywords['class']);
+            $this->setAbstract($definition, $keywords['class']);
             foreach ($keywords as $key => $value) {
-                if (isset(self::SERVICE_KEYWORDS[$key])) {
+                if (isset(self::SERVICE_KEYWORDS[$key])
+                    && !empty($keywords['autowire']) 
+                    && ($key !== 'arguments' || $key !== 'calls')
+                ) {
                     $this->{self::SERVICE_KEYWORDS[$key]}($definition, $value);
                 }
             }
         }
     }
 
-    protected function setAbstract(Definition $definition, string $abstract): void
+    protected function setAbstract(Definition $definition, string $class): void
     {
+        $interfaces = (new ReflectionClass($class))->getInterfaceNames();
+        $abstract = empty($interfaces) ? $class : $interfaces[0];
         $definition->setAbstract($abstract);
     }
 
@@ -69,6 +76,13 @@ class PhpFileLoader extends BaseLoader
     {
         foreach ($methods as $method => $arguments) {
             $definition->addMethodCall($method, $arguments);
+        }
+    }
+
+    protected function autowire(Definition $definition, bool $autowire): void
+    {
+        if ($autowire) {
+            $definition->autowire();
         }
     }
 }

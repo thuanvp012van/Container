@@ -2,8 +2,9 @@
 
 namespace Penguin\Component\Container;
 
-use Penguin\Component\Container\Exception\MethodNotFoundException;
 use Penguin\Component\Container\Exception\ServiceNotFoundException;
+use Penguin\Component\Container\Exception\MethodNotFoundException;
+use ReflectionParameter;
 use ReflectionMethod;
 
 /**
@@ -30,10 +31,15 @@ class Container implements ContainerInterface
      */
     protected array $aliasDefinitions = [];
 
+    /**
+     * Singletons constructor should always be private.
+     */
     protected function __construct() {}
 
     /**
      * Get the globally available instance of the container.
+     * 
+     * @return static
      */
     public static function getInstance(): static
     {
@@ -80,7 +86,7 @@ class Container implements ContainerInterface
     }
 
     /**
-     * Check service exists
+     * Check service exists.
      * 
      * @param string $id
      * @return bool
@@ -92,23 +98,43 @@ class Container implements ContainerInterface
             || isset($this->aliasDefinitions[$id]);
     }
 
-    public function call(string $method, string $id): mixed
+    /**
+     * Call method in service.
+     * 
+     * @param string $method
+     * @param int $id
+     * @param array $arguments
+     * @return mixed
+     */
+    public function call(string $method, string $id, array $arguments = []): mixed
     {
         if ($this->has($id)) {
             $definition = $this->definitions[$id];
             $methodCall = $definition->getMethodCall($method);
             if ($methodCall !== null) {
                 $service = $this->get($id);
-                $arguments = $methodCall[$method];
+                $arguments = array_map(function ($argument) use ($arguments) {
+                    if ($argument instanceof ReflectionParameter) {
+                        $argName = $argument->getName();
+                        if (array_key_exists($argName, $arguments)) {
+                            return $arguments[$argName];
+                        }
+                    }
+                    return $argument;
+                }, $methodCall[$method]);
                 return $service->$method(...$this->extractArguments($service, $method, $arguments));
             }
             throw new MethodNotFoundException("Method {$definition->getClass()}::{$method}() does not exist");
         }
-        throw new ServiceNotFoundException("Service $id does not exist");
+        throw new ServiceNotFoundException("Service {$id} does not exist");
     }
 
     /**
-     * Set alias call service.
+     * Set alias for the service.
+     * 
+     * @param string $id
+     * @param string $alias
+     * @return static
      */
     public function setAlias(string $id, string $alias): static
     {
@@ -117,7 +143,20 @@ class Container implements ContainerInterface
     }
 
     /**
+     * Get service definitions.
+     * 
+     * @return array<string, \Penguin\Component\Container\Definition>
+     */
+    public function getDefinitions(): array
+    {
+        return $this->definitions;
+    }
+
+    /**
      * Create and return a service.
+     * 
+     * @param string $id
+     * @return object|false
      */
     protected function make(string $id): object|false
     {
@@ -140,12 +179,18 @@ class Container implements ContainerInterface
         $service = new $class(...$arguments);
 
         if ($definition->isSingleton()) {
-            $this->addService($id, $service);
+            $this->services[$id] = $service;
         }
 
         return $service;
     }
 
+    /**
+     * Get service by tag.
+     * 
+     * @param Tag $tag
+     * @return object[]|object
+     */
     protected function getServicesByTag(Tag $tag): array|object
     {
         $tag = (string) $tag;
@@ -160,20 +205,27 @@ class Container implements ContainerInterface
         return $services;
     }
 
-    protected function extractArguments(object|string $objectOrMethod, string $method, array $arguments): array
+    /**
+     * Extract arguments.
+     * 
+     * @param object|string $objectOrClass
+     * @param string $method
+     * @param mixed[] $arguments
+     * @return object[]
+     */
+    protected function extractArguments(object|string $objectOrClass, string $method, array $arguments): array
     {
         $results = [];
         foreach ($arguments as $argument) {
             if ($argument instanceof Reference) {
                 $argument = $this->get((string) $argument);
             }
-            
+
             if (!$argument instanceof Tag) {
                 $results[] = $argument;
             } else {
                 $services = $this->getServicesByTag($argument);
-
-                $params = (new ReflectionMethod($objectOrMethod, $method))->getParameters();
+                $params = (new ReflectionMethod($objectOrClass, $method))->getParameters();
                 foreach ($params as $position => $param) {
                     $argument = $services[$param->getType()->getName()][0];
                     if (isset($argument)) {
@@ -186,21 +238,15 @@ class Container implements ContainerInterface
         return $results;
     }
 
-    protected function addService(string $id, object $service): static
-    {
-        $this->services[$id] = $service;
-        return $this;
-    }
-
     /**
      * Singletons should not be cloneable.
      */
-    protected function __clone() {}
+    protected function __clone(): void {}
 
     /**
      * Singletons should not be restorable from strings.
      */
-    public function __wakeup()
+    public function __wakeup(): void
     {
         throw new \Exception('Cannot unserialize a singleton.');
     }

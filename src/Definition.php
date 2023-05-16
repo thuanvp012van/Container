@@ -17,7 +17,9 @@ class Definition
 
     protected array $calls = [];
 
-    protected ?string $abstract;
+    protected array $attributes = [];
+
+    protected string|null $abstract = null;
 
     public function __construct(protected string $id, protected string $class) {}
 
@@ -43,7 +45,7 @@ class Definition
         return $this;
     }
 
-    public function getAbStract(): ?string
+    public function getAbStract(): string|null
     {
         return $this->abstract;
     }
@@ -136,6 +138,7 @@ class Definition
     {
         $scanner = new Scanner($this->getClass());
         $this->arguments = $scanner->getArguments();
+        $this->calls = $scanner->getMethods();
         return $this;
     }
 }
