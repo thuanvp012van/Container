@@ -3,6 +3,7 @@
 namespace Penguin\Component\Container\Loader;
 
 use Penguin\Component\Container\Definition;
+use Penguin\Component\Container\Reference;
 use ReflectionClass;
 
 /**
@@ -28,8 +29,21 @@ class PhpFileLoader extends BaseLoader
             $definition = $this->container->register($id, $keywords['class']);
             $this->setAbstract($definition, $keywords['class']);
             foreach ($keywords as $key => $value) {
-                if (isset(self::SERVICE_KEYWORDS[$key])
-                    && !empty($keywords['autowire']) 
+                if ($key === 'arguments') {
+                    $value = array_map(function ($argument) {
+                        if (
+                            strpos($argument, '@') === 0
+                            && $this->container->has($service = substr($argument, 1))
+                        ) {
+                            return new Reference($service);
+                        }
+                        return $argument;
+                    }, $value);
+                }
+
+                if (
+                    isset(self::SERVICE_KEYWORDS[$key])
+                    && !empty($keywords['autowire'])
                     && ($key !== 'arguments' || $key !== 'calls')
                 ) {
                     $this->{self::SERVICE_KEYWORDS[$key]}($definition, $value);
@@ -51,7 +65,7 @@ class PhpFileLoader extends BaseLoader
             $definition->addArgument($argument);
         }
     }
-    
+
     protected function addTags(Definition $definition, array $tags): void
     {
         foreach ($tags as $tag) {
