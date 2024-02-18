@@ -2,12 +2,10 @@
 
 namespace Penguin\Component\Container;
 
-/**
- * Reference represents a service reference.
- *
- * @author Nguyễn Hoàng Thắng Thuận <thuanvp012van@gmail.com>
- */
-class Reference
+use Attribute;
+
+#[Attribute(Attribute::TARGET_PROPERTY|Attribute::TARGET_PARAMETER)]
+class Inject
 {
     public function __construct(protected string $id) {}
 

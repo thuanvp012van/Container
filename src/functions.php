@@ -4,11 +4,11 @@ use Penguin\Component\Container\Container;
 
 if (!function_exists('service')) {
     /**
-     * Get service by abtract.
+     * Get service by id.
      */
-    function service(string $id = null): object|false
+    function service(string $id = null): object
     {
         $container = Container::getInstance();
-        return $id === null ? $container : $container->get($id);
+        return is_null($id) ? $container : $container->get($id);
     }
 }

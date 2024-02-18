@@ -2,8 +2,6 @@
 
 namespace Penguin\Component\Container;
 
-use Penguin\Component\Container\Definition;
-
 interface ContainerInterface
 {
     /**
@@ -12,21 +10,39 @@ interface ContainerInterface
     public static function getInstance(): static;
 
     /**
-     * Register a service.
-     * 
-     * @param string $id
-     * @param string $concrete
-     * @return \Penguin\Component\Container\Definition
+     * Get service by id.
      */
-    public function register(string $id, string $concrete): Definition;
+    public function get(string $id): array|object;
 
     /**
-     * Get service by id.
-     * 
-     * @param string $id
-     * @return object|false
+     * Register a shared binding in the container.
      */
-    public function get(string $id): object|false;
+    public function singleton(string $id, callable $callback): void;
+
+    /**
+     * Register a shared binding if it hasn't already been registered.
+     */
+    public function singletonIf(string $id, callable $callback): void;
+
+    /**
+     * Register a transient binding in the container.
+     */
+    public function transient(string $id, callable $callback): void;
+
+    /**
+     * Register a transient binding if it hasn't already been registered.
+     */
+    public function transientIf(string $id, callable $callback): void;
+
+    /**
+     * Register a scoped binding in the container.
+     */
+    public function scoped(string $id, callable $callback): void;
+
+    /**
+     * Register a scoped binding if it hasn't already been registered.
+     */
+    public function scopedIf(string $id, callable $callback): void;
 
     /**
      * Check service exists
@@ -37,18 +53,19 @@ interface ContainerInterface
     public function has(string $id): bool;
 
     /**
-     * Call method in service.
-     * 
-     * @param string $method
-     * @param int $id
-     * @return mixed
-     */
-    public function call(string $method, string $id): mixed;
-
-    /**
      * Set alias call service.
      */
-    public function setAlias(string $id, string $alias): static;
+    public function alias(string $id, string $alias): static;
+
+    /**
+     * Get the alias for an abstract if available.
+     */
+    public function getAlias(string $id): array;
+
+    /**
+     * Clear all of the scoped instances from the container.
+     */
+    public function forgetScopedInstances(): void;
 
     /**
      * Singletons should not be restorable from strings.
