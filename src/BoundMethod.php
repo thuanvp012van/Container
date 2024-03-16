@@ -2,6 +2,7 @@
 
 namespace Penguin\Component\Container;
 
+use Penguin\Component\Container\Inject;
 use Closure;
 
 class BoundMethod
@@ -56,7 +57,11 @@ class BoundMethod
         $container = Container::getInstance();
         $params = $reflectionMethod->getParameters();
         foreach ($params as $key => $param) {
-            $paramType = (string)$param->getType();
+            if (!empty($attributes = $param->getAttributes(Inject::class))) {
+                $paramType = (string)$attributes[0]->newInstance();
+            } else {
+                $paramType = (string)$param->getType();
+            }
             if ($container->has($paramType)) {
                 $params[$key] = $container->get($paramType);
             } else {
