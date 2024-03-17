@@ -15,15 +15,15 @@
         "psr-4": {
             "Penguin\\Component\\Container\\": "src",
             "Penguin\\Component\\Container\\Tests\\": "src"
-        }
-    },
-    "autoload-dev": {
-        "psr-4": {
-            "Penguin\\Component\\Container\\Tests\\": "tests"
         },
         "files": [
             "src/functions.php"
         ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Penguin\\Component\\Container\\Tests\\": "tests"
+        }
     },
     "require": {
         "php": ">=8.1"
