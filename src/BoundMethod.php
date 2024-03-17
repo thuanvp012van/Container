@@ -7,7 +7,7 @@ use Closure;
 
 class BoundMethod
 {
-    public static function call(Closure|array $callback, array $parameters = []): mixed
+    public static function call(callable|array $callback, array $parameters = []): mixed
     {
         if (is_array($callback)) {
             $concrete = $callback[0];
@@ -26,11 +26,15 @@ class BoundMethod
             return $concrete->$method(...$parameters);
         }
 
+        if (is_object($callback)) {
+            $callback = [$callback, '__invoke'];
+        }
+
         $parameters = static::getMethodDependencies($callback, $parameters);
         return $callback(...$parameters);
     }
 
-    protected static function getMethodDependencies(Closure|array $callback, array $parameters = []): array
+    protected static function getMethodDependencies(callable|array $callback, array $parameters = []): array
     {
         if ($callback instanceof Closure) {
             $reflection = new \ReflectionFunction($callback);
